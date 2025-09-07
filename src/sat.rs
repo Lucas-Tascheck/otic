@@ -1,5 +1,3 @@
-use rand::Rng;
-
 #[derive(Debug, Clone)]
 pub struct Clause {
     pub vars: [i32; 3], // positivo = normal, negativo = negado
@@ -39,11 +37,4 @@ pub fn evaluate(instance: &SATInstance, assignment: &Vec<u8>) -> i32 {
         }
     }
     satisfied
-}
-
-pub fn generate_population(pop_size: usize, n_vars: usize) -> Vec<Vec<u8>> {
-    let mut rng = rand::thread_rng();
-    (0..pop_size)
-        .map(|_| (0..n_vars).map(|_| rng.gen_range(0..=1)).collect())
-        .collect()
 }
