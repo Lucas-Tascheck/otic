@@ -1,8 +1,10 @@
 mod initialize_population;
+mod exercicio1;
 mod sat;
 
 use initialize_population::*;
 use sat::*;
+use exercicio1::*;
 
 fn main() {
     let data = read_config("./src/config.json");
@@ -43,4 +45,7 @@ fn main() {
         "Melhor indivíduo: {:?} com {} cláusulas satisfeitas",
         best_ind, best_score
     );
+
+    println!("Exercicio 1!");
+    run_exercicio1(pop_size, dim);
 }
