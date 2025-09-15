@@ -18,41 +18,52 @@ pub fn evaluate_individual(ind: &Representation) -> f64 {
 }
 
 pub fn run_exercicio1(pop: usize, dim: usize, gens: usize, runs: usize) {
-    println!("=== EX 1: Maximização de Função Algébrica ===");
+    println!("=== EX 1: Maximização e Minimização de Função Algébrica ===");
 
     (1..=runs).into_par_iter().for_each(|run| {
-    let mut global_best_score = f64::MIN;
-    let mut global_best_genes: Option<Vec<f64>> = None;
+        let mut global_best_score = f64::MIN;
+        let mut global_best_genes: Option<Vec<f64>> = None;
 
-    for g in 1..=gens {
-        let population = generate_population(
-            pop,
-            RepresentationType::Real { dim, min: -2.0, max: 2.0 }
-        );
+        let mut global_worst_score = f64::MAX;
+        let mut global_worst_genes: Option<Vec<f64>> = None;
 
-        let mut best_score = f64::MIN;
-        let mut best_ind: Option<&Representation> = None;
+        for _g in 1..=gens {
+            let population = generate_population(
+                pop,
+                RepresentationType::Real { dim, min: -2.0, max: 2.0 }
+            );
 
-        for ind in &population {
-            let score = evaluate_individual(ind);
-            if score > best_score {
-                best_score = score;
-                best_ind = Some(ind);
-            }
-        }
+            for ind in &population {
+                let score = evaluate_individual(ind);
 
-        if let Some(ind) = best_ind {
-            if let Representation::Real(genes) = ind {
-                if best_score > global_best_score {
-                    global_best_score = best_score;
-                    global_best_genes = Some(genes.clone());
+                if score > global_best_score {
+                    global_best_score = score;
+                    if let Representation::Real(genes) = ind {
+                        global_best_genes = Some(genes.clone());
+                    }
+                }
+
+                if score < global_worst_score {
+                    global_worst_score = score;
+                    if let Representation::Real(genes) = ind {
+                        global_worst_genes = Some(genes.clone());
+                    }
                 }
             }
         }
-    }
 
-    if let Some(genes) = global_best_genes {
-        println!("Run {} -> melhor genes: {:?} | score = {:.4}", run, genes, global_best_score);
-    }
-});
+        if let Some(best_genes) = global_best_genes {
+            println!(
+                "Run {} -> Maximização: genes = {:?} | score = {:.4}",
+                run, best_genes, global_best_score
+            );
+        }
+
+        if let Some(worst_genes) = global_worst_genes {
+            println!(
+                "Run {} -> Minimização: genes = {:?} | score = {:.4}\n",
+                run, worst_genes, global_worst_score
+            );
+        }
+    });
 }
