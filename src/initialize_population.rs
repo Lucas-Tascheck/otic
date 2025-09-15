@@ -60,6 +60,8 @@ pub fn generate_population(pop_size: usize, repr: RepresentationType) -> Vec<Rep
 pub struct Config {
     pub pop: usize,
     pub dim: usize,
+    pub runs: usize,
+    pub gens: usize
 }
 
 pub fn read_config(path: &str) -> Config {

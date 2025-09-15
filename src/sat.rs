@@ -1,3 +1,8 @@
+use crate::initialize_population::{
+    Representation, RepresentationType, generate_population
+};
+use rayon::prelude::*;
+
 #[derive(Debug, Clone)]
 pub struct Clause {
     pub vars: [i32; 3], // positivo = normal, negativo = negado
@@ -38,3 +43,40 @@ pub fn evaluate(instance: &SATInstance, assignment: &Vec<u8>) -> i32 {
     }
     satisfied
 }
+
+pub fn run_3sat(pop: usize, dim: usize, gens: usize, runs: usize) {
+    println!("\n=== EX 2: Problema 3-SAT ===");
+
+    (1..=runs).into_par_iter().for_each(|run| {
+        let instance = toy_instance();
+        let mut global_best_score = -1;
+        let mut global_best_ind: Vec<u8> = Vec::new();
+
+        for g in 1..=gens {
+            let population = generate_population(pop, RepresentationType::Binary { dim: instance.n_vars });
+
+            let mut best_score = -1;
+            let mut best_ind: Vec<u8> = Vec::new();
+
+            for ind in &population {
+                if let Representation::Binary(genes) = ind {
+                    let score = evaluate(&instance, genes);
+                    if score > best_score {
+                        best_score = score;
+                        best_ind = genes.clone();
+                    }
+                }
+            }
+
+            if best_score > global_best_score {
+                global_best_score = best_score;
+                global_best_ind = best_ind.clone();
+            }
+        }
+        println!(
+            "Run {} concluída -> Melhor indivíduo global: {:?} | Score = {}",
+            run, global_best_ind, global_best_score
+        );
+    });
+}
+

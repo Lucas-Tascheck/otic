@@ -11,6 +11,8 @@ fn main() {
 
     let pop_size = data.pop;
     let dim = data.dim;
+    let runs = data.runs;
+    let gens = data.gens;
 
     println!("=== EX 1: Populações iniciais ===");
     let pop_bin = generate_population(10, RepresentationType::Binary { dim: 15 });
@@ -23,29 +25,11 @@ fn main() {
     println!("Exemplo PERM: {:?}", pop_perm[0]);
     println!("Exemplo REAL: {:?}", pop_real[0]);
 
-    println!("\n=== EX 2: Problema 3-SAT ===");
-    let instance = toy_instance();
+    // Parametros: POP, DIM, GENS, RUNS
 
-    let pop = generate_population(pop_size, RepresentationType::Binary { dim: instance.n_vars });
+    // Exercicio 3 SAT
+    run_3sat(30, 3, gens, runs);
 
-    let mut best_score = -1;
-    let mut best_ind: Vec<u8> = Vec::new();
-
-    for ind in &pop {
-        if let Representation::Binary(genes) = ind {
-            let score = evaluate(&instance, genes);
-            if score > best_score {
-                best_score = score;
-                best_ind = genes.clone();
-            }
-        }
-    }
-
-    println!(
-        "Melhor indivíduo: {:?} com {} cláusulas satisfeitas",
-        best_ind, best_score
-    );
-
-    println!("Exercicio 1!");
-    run_exercicio1(pop_size, dim);
+    // EX 1: Maximização de Função Algébrica 
+    run_exercicio1(100, 1, gens, runs);
 }
