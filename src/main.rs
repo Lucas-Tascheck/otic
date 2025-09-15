@@ -31,5 +31,6 @@ fn main() {
     run_3sat(30, 3, gens, runs);
 
     // EX 1: Maximização de Função Algébrica 
+    // valor otimo para X = 1.8904170901022
     run_exercicio1(100, 1, gens, runs);
 }
