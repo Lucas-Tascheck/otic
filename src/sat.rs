@@ -25,13 +25,13 @@ pub fn toy_instance() -> SATInstance {
     }
 }
 
-pub fn evaluate(instance: &SATInstance, assignment: &Vec<u8>) -> i32 {
+pub fn evaluate(instance: &SATInstance, assignment: &str) -> i32 {
     let mut satisfied = 0;
     for clause in &instance.clauses {
         let mut clause_sat = false;
         for &var in &clause.vars {
             let idx = var.abs() as usize - 1;
-            let val = assignment[idx] == 1;
+            let val = assignment.chars().nth(idx).unwrap() == '1';
             if (var > 0 && val) || (var < 0 && !val) {
                 clause_sat = true;
                 break;
@@ -50,13 +50,13 @@ pub fn run_3sat(pop: usize, dim: usize, gens: usize, runs: usize) {
     (1..=runs).into_par_iter().for_each(|run| {
         let instance = toy_instance();
         let mut global_best_score = -1;
-        let mut global_best_ind: Vec<u8> = Vec::new();
+        let mut global_best_ind: String = String::new();
 
         for g in 1..=gens {
             let population = generate_population(pop, RepresentationType::Binary { dim: instance.n_vars });
 
             let mut best_score = -1;
-            let mut best_ind: Vec<u8> = Vec::new();
+            let mut best_ind: String = String::new();
 
             for ind in &population {
                 if let Representation::Binary(genes) = ind {
@@ -73,10 +73,12 @@ pub fn run_3sat(pop: usize, dim: usize, gens: usize, runs: usize) {
                 global_best_ind = best_ind.clone();
             }
         }
+
         println!(
             "Run {} concluída -> Melhor indivíduo global: {:?} | Score = {}",
             run, global_best_ind, global_best_score
         );
+
     });
 }
 

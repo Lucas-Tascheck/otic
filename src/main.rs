@@ -32,5 +32,8 @@ fn main() {
 
     // EX 1: Maximização de Função Algébrica 
     // valor otimo para X = 1.8904170901022
-    run_exercicio1(100, 1, gens, runs);
+    run_exercicio1(pop_size, dim, gens, runs);
+    println!("{:?}", bin_to_dec("01111"));
+    println!("{:?}", bin_to_dec("01111"));
+    println!("{:?}", gen_to_fen("11110", 0, 16, 5));
 }
