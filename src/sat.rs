@@ -1,4 +1,4 @@
-use crate::initialize_population::{
+use crate::functions::{
     Representation, RepresentationType, generate_population
 };
 use rayon::prelude::*;

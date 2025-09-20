@@ -1,9 +1,9 @@
-mod initialize_population;
+mod functions;
 mod exercicio1;
 mod exercicio2;
 mod sat;
 
-use initialize_population::*;
+use functions::*;
 use sat::*;
 use exercicio1::*;
 use exercicio2::*;
@@ -34,12 +34,12 @@ fn main() {
 
     // EX 1: Maximização de Função Algébrica 
     // valor otimo para X = 1.8904170901022
-    //run_exercicio1(pop_size, dim, gens, runs);
+    run_exercicio1(pop_size, dim, gens, runs);
 
     //EX 2: Fabrica de Rádios
     //Maximização: genes = "1111111110" | fitness = 0.7571 | Lucro = 1029.68
     // 11111 = 24 st
     // 11110 = ~8 lx
     //Lucro = 1040.0
-    run_exercicio2(pop_size, dim, gens, runs, 1.0)
+    //run_exercicio2(pop_size, dim, gens, runs, 1.0)
 }

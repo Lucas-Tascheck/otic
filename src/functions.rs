@@ -96,6 +96,13 @@ pub fn gen_to_fen(bits: &str, min: u32, max: u32, bit_length: u32) -> f64 {
     val
 }
 
+pub fn gen_to_fen_fl(bits: &str, min: f64, max: f64, bit_length: i32) -> f64 {
+    let num = bin_to_dec(bits) as f64;
+    let val = min + (num / ((2.0f64).powi(bit_length) - 1.0)) * (max - min);
+    val
+}
+
+
 fn main() {
     // Exemplo
     let pop = generate_population(5, RepresentationType::Binary { dim: 10 });
