@@ -2,6 +2,41 @@ use crate::functions::{
     Representation, RepresentationType, generate_population, gen_to_fen_fl
 };
 use rayon::prelude::*;
+use rand::Rng;
+
+#[derive(Clone, Debug)]
+struct Indiv {
+    genes: String,
+    fitness: f64,
+}
+
+fn roulette_selection_without_replacement(
+    population: &Vec<Indiv>,
+    num_to_select: usize,
+) -> Vec<Indiv> {
+    let mut selected = Vec::new();
+    let mut pool = population.clone();
+
+    for _ in 0..num_to_select {
+        let total_fitness: f64 = pool.iter().map(|ind| ind.fitness).sum();
+
+        let mut cumulative = 0.0;
+        let mut wheel = Vec::new();
+        for ind in &pool {
+            cumulative += ind.fitness / total_fitness;
+            wheel.push((cumulative, ind.clone()));
+        }
+
+        let r: f64 = rand::thread_rng().r#gen::<f64>();
+
+        if let Some((_, chosen)) = wheel.into_iter().find(|(prob, _)| r <= *prob) {
+            selected.push(chosen.clone());
+            pool.retain(|x| x.genes != chosen.genes);
+        }
+    }
+
+    selected
+}
 
 pub fn evaluate_individual(ind: &Representation, minimize: bool) -> f64 {
     match ind {
@@ -57,6 +92,19 @@ pub fn run_exercicio1(pop: usize, dim: usize, gens: usize, runs: usize) {
                     }
                 }
             }
+
+            let evaluated: Vec<Indiv> = population.iter().map(|ind| {
+                let fitness = evaluate_individual(ind, false); 
+                let genes = if let Representation::Binary(g) = ind {
+                    g.clone()
+                } else {
+                    panic!("Representação inválida");
+                };
+                Indiv { genes, fitness }
+            }).collect();
+
+            let selecionados = roulette_selection_without_replacement(&evaluated, evaluated.len());
+            //println!("Indivíduos selecionados (roleta): {:?}", selecionados);
         }
 
         if let Some(best_genes) = global_best_genes {
