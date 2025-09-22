@@ -51,3 +51,11 @@ fn main() {
     // Fitness = Objective function - k * Penalty funciton
     //run_exercicio2(pop_size, dim, gens, runs, 1.0)
 }
+
+
+// TO-DO:
+// Organizar por pastas
+// Finalizar seleção por roleta
+// Fazer crossover e mutação dos genes
+// Fazer graficos de convergencia
+// Aplicar tudo isso ao 3-SAT
