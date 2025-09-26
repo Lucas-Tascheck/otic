@@ -13,7 +13,7 @@ fn penalty(st: f64, lx: f64) -> f64 {
     ((st + 2.0 * lx - 40.0) / 16.0).max(0.0)
 }
 
-fn evaluate_individual(ind: &Representation, minimize: bool, k: f64) -> f64 {
+fn evaluate_individual(ind: &Representation, k: f64) -> f64 {
     match ind {
         Representation::Binary(genes) => {
             let mid = genes.len() / 2;
@@ -45,19 +45,41 @@ pub fn run_exercicio2(pop: usize, dim: usize, gens: usize, runs: usize, k: f64) 
     (1..=runs).into_par_iter().for_each(|run| {
         let mut global_best_score = 0.0;
         let mut global_best_genes: Option<BitVec> = None;
+        let mut population = generate_population(pop, RepresentationType::Binary { dim });
 
         for _g in 1..=gens {
-            let population = generate_population(pop, RepresentationType::Binary { dim });
+            let evaluated: Vec<Indiv> = population.par_iter().map(|ind| {
+                let fitness = match ind {
+                    Representation::Binary(genes) => evaluate_individual(&Representation::Binary(genes.clone()), 1.0),
+                    _ => panic!("Representação inválida"),
+                };
+                if let Representation::Binary(genes) = ind {
+                    Indiv { genes: genes.clone(), fitness }
+                } else { unreachable!() }
+            }).collect();
 
-            for ind in &population {
-                let score = evaluate_individual(ind, false, k);
-
-                if score >= global_best_score {
-                    global_best_score = score;
-                    if let Representation::Binary(genes) = ind {
-                        global_best_genes = Some(genes.clone());
-                    }
+            for ind in &evaluated {
+                if ind.fitness > global_best_score {
+                    global_best_score = ind.fitness;
+                    global_best_genes = Some(ind.genes.clone());
                 }
+            }
+
+            let mean_fitness: f64 = evaluated.par_iter().map(|ind| ind.fitness).sum::<f64>() / evaluated.len() as f64;
+
+            let selecionados = roulette(&evaluated, evaluated.len() / 2);
+            let crossover = apply_crossover(&selecionados, 0.8);
+
+            population = crossover
+                .into_iter()
+                .map(|ind| Representation::Binary(ind.genes))
+                .collect();
+
+            println!("Geração -> Max fitness: {:.4}, Média: {:.4}", global_best_score, mean_fitness);
+        }
+        for (i, ind) in population.iter().enumerate() {
+            if let Representation::Binary(genes) = ind {
+                println!("Ind {} -> {}", i + 1, print_bits(genes));
             }
         }
 

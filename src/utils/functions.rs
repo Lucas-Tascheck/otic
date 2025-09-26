@@ -1,14 +1,14 @@
 #![allow(dead_code)]
 use rand::seq::SliceRandom;
-use serde_json;
 use serde::Deserialize;
 use std::fs;
 use rand::Rng;
-use bitvec::prelude::*; // necessário para BitVec
+use rayon::prelude::*;
+use bitvec::prelude::*;
 
 #[derive(Debug, Clone)]
 pub enum Representation {
-    Binary(BitVec),     // agora é BitVec
+    Binary(BitVec),
     Integer(Vec<i32>),
     IntPerm(Vec<i32>),
     Real(Vec<f64>),
@@ -22,16 +22,19 @@ pub enum RepresentationType {
     Real { dim: usize, min: f64, max: f64 },
 }
 
+#[derive(Clone, Debug)]
+pub struct Indiv {
+    pub genes: BitVec, 
+    pub fitness: f64,
+}
+
 pub fn generate_population(pop_size: usize, repr: RepresentationType) -> Vec<Representation> {
     let mut rng = rand::thread_rng();
 
     match repr {
         RepresentationType::Binary { dim } => (0..pop_size)
             .map(|_| {
-                let mut genes: BitVec = BitVec::with_capacity(dim);
-                for _ in 0..dim {
-                    genes.push(rng.gen_bool(0.5));
-                }
+                let genes: BitVec = (0..dim).map(|_| rng.gen_bool(0.5)).collect();
                 Representation::Binary(genes)
             })
             .collect(),
@@ -65,7 +68,7 @@ pub struct Config {
     pub pop: usize,
     pub dim: usize,
     pub runs: usize,
-    pub gens: usize
+    pub gens: usize,
 }
 
 pub fn read_config(path: &str) -> Config {
@@ -77,22 +80,14 @@ pub fn print_bits(bits: &BitVec) -> String {
     bits.iter().map(|b| if *b { '1' } else { '0' }).collect()
 }
 
-// Converte BitVec binário para decimal (LSB à esquerda)
 pub fn bitvec_to_dec(bits: &BitSlice) -> u32 {
-    let mut value = 0;
-    for (i, bit) in bits.iter().enumerate() {
-        if *bit {
-            value += 1 << i; // LSB à esquerda
-        }
-    }
-    value
+    bits.iter()
+        .enumerate()
+        .fold(0, |acc, (i, bit)| if *bit { acc + (1 << i) } else { acc })
 }
 
-// Converte BitVec para valor float no intervalo [min, max]
 pub fn gen_to_fen(bits: &BitSlice, min: u32, max: u32, bit_length: u32) -> f64 {
-    let min_f = min as f64;
-    let max_f = max as f64;
-    let val = min_f + ((max_f - min_f) / ((2.0f64).powi(bit_length as i32) - 1.0)) * (bitvec_to_dec(bits) as f64);
+    let val = min as f64 + ((max - min) as f64 / ((1 << bit_length) - 1) as f64) * bitvec_to_dec(bits) as f64;
     val
 }
 
@@ -101,12 +96,65 @@ pub fn gen_to_fen_fl(bits: &BitSlice, min: f64, max: f64, bit_length: i32) -> f6
     min + (num / ((2.0f64).powi(bit_length) - 1.0)) * (max - min)
 }
 
-// --- Exemplo de main para teste ---
-fn main() {
-    let pop = generate_population(5, RepresentationType::Binary { dim: 10 });
-    for ind in pop {
-        if let Representation::Binary(b) = ind {
-            println!("Binário: {:?}, Decimal: {}, Fen: {:.2}", b, bitvec_to_dec(&b), gen_to_fen(&b, 0, 40, 10));
+pub fn roulette_once<'a>(pool: &'a [Indiv], rng: &mut impl Rng) -> &'a Indiv {
+    let total_fitness: f64 = pool.iter().map(|ind| ind.fitness).sum();
+    let r: f64 = rng.r#gen();
+    let mut cumulative = 0.0;
+
+    pool.iter()
+        .find(|ind| {
+            cumulative += ind.fitness / total_fitness;
+            r <= cumulative
+        })
+        .unwrap_or(&pool[pool.len()-1])
+}
+
+pub fn roulette(population: &[Indiv], num_pairs: usize) -> Vec<(&Indiv, &Indiv)> {
+    let mut rng = rand::thread_rng();
+    let mut selected = Vec::with_capacity(num_pairs);
+
+    for _ in 0..num_pairs {
+        let parent1 = roulette_once(population, &mut rng);
+        let mut parent2 = roulette_once(population, &mut rng);
+        while parent2.genes == parent1.genes {
+            parent2 = roulette_once(population, &mut rng);
+        }
+        selected.push((parent1, parent2));
+    }
+
+    selected
+}
+
+pub fn apply_crossover(pairs: &[(&Indiv, &Indiv)], crossover_prob: f64) -> Vec<Indiv> {
+    let mut rng = rand::thread_rng();
+    let mut offspring = Vec::with_capacity(pairs.len() * 2);
+
+    for (p1, p2) in pairs {
+        if rng.gen_bool(crossover_prob) {
+            let len = p1.genes.len();
+
+            let mut point1 = rng.gen_range(1..len);
+            let mut point2 = rng.gen_range(1..len);
+            if point1 > point2 {
+                std::mem::swap(&mut point1, &mut point2);
+            }
+
+            let mut child1 = p1.genes.clone();
+            let mut child2 = p2.genes.clone();
+
+            for i in point1..point2 {
+                let temp = child1[i];
+                child1.set(i, child2[i]);
+                child2.set(i, temp);
+            }
+
+            offspring.push(Indiv { genes: child1, fitness: 0.0 });
+            offspring.push(Indiv { genes: child2, fitness: 0.0 });
+        } else {
+            offspring.push((*p1).clone());
+            offspring.push((*p2).clone());
         }
     }
+
+    offspring
 }

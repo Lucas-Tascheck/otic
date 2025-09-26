@@ -38,7 +38,7 @@ fn main() {
     // maximize:
     //           c_min = 4.0;
     //           ((fx + c_min)/normalize).max(0.0)
-    //run_exercicio1(pop_size, 16, gens, runs);
+    //run_exercicio1(pop_size, 16, gens, runs, true);
 
     //EX 2: Fabrica de Rádios
     //Maximização: genes = "1111111110" | fitness = 0.7571 | Lucro = 1029.68
@@ -52,7 +52,6 @@ fn main() {
 }
 
 // TO-DO:
-// Finalizar seleção por roleta
-// Fazer crossover e mutação dos genes
+// Fazer mutação dos genes
 // Fazer graficos de convergencia
 // Aplicar tudo isso ao 3-SAT

@@ -3,58 +3,11 @@ use rayon::prelude::*;
 use rand::Rng;
 use bitvec::prelude::BitVec;
 
-#[derive(Clone, Debug)]
-struct Indiv {
-    genes: BitVec, // agora BitVec
-    fitness: f64,
-}
-
-// ---- SELEÇÃO POR ROLETA ----
-fn roulette(population: &Vec<Indiv>, num_pairs: usize) -> Vec<(Indiv, Indiv)> {
-    let mut selected = Vec::new();
-
-    for _ in 0..num_pairs {
-        let parent1 = roulette_once(population);
-
-        // garante que parent2 não seja igual ao parent1
-        let mut parent2 = roulette_once(population);
-        while parent2.genes == parent1.genes {
-            parent2 = roulette_once(population);
-        }
-
-        selected.push((parent1, parent2));
-    }
-
-    selected
-}
-
-fn roulette_once(pool: &Vec<Indiv>) -> Indiv {
-    let total_fitness: f64 = pool.iter().map(|ind| ind.fitness).sum();
-
-    let mut cumulative = 0.0;
-    let mut wheel = Vec::new();
-    for ind in pool {
-        cumulative += ind.fitness / total_fitness;
-        wheel.push((cumulative, ind.clone()));
-    }
-
-    let r: f64 = rand::thread_rng().r#gen::<f64>();
-
-    if let Some((_, chosen)) = wheel.into_iter().find(|(prob, _)| r <= *prob) {
-        chosen
-    } else {
-        pool.last().unwrap().clone()
-    }
-}
-
-// ---- AVALIAÇÃO ----
 pub fn evaluate_individual(ind: &Representation, minimize: bool) -> f64 {
     match ind {
         Representation::Binary(genes) => {
-            // convert BitVec para f64 usando sua função gen_to_fen_fl
-            let x = gen_to_fen_fl(&genes, -2.0, 2.0, 16) as f64;
+            let x = gen_to_fen_fl(&genes, -2.0, 2.0, 16);
             let normalize = 6.0;
-
             let fx = (20.0 * x).cos() - x.abs() / 2.0 + (x.powi(3) / 4.0);
 
             if minimize {
@@ -65,68 +18,57 @@ pub fn evaluate_individual(ind: &Representation, minimize: bool) -> f64 {
                 ((fx + c_min) / normalize).max(0.0)
             }
         }
-        _ => panic!("Representação inválida para este exercício, use Binary."),
+        _ => panic!("Representação inválida, use Binary."),
     }
 }
 
-// ---- EXECUÇÃO DO EXERCÍCIO ----
-pub fn run_exercicio1(pop: usize, dim: usize, gens: usize, runs: usize) {
-    println!("=== EX 1: Maximização e Minimização de Função Algébrica ===");
+pub fn run_exercicio1(pop: usize, dim: usize, gens: usize, runs: usize, maximize: bool) {
+    println!("=== EX 1: Função Algébrica Otimizada ===");
 
     (1..=runs).into_par_iter().for_each(|run| {
-        let mut global_best_score = 0.0;
+        let mut global_best_score = if maximize { f64::MIN } else { f64::MAX };
         let mut global_best_genes: Option<BitVec> = None;
 
-        let mut global_worst_score = f64::MIN;
-        let mut global_worst_genes: Option<BitVec> = None;
+        let mut population: Vec<Representation> = generate_population(pop, RepresentationType::Binary { dim });
 
-        for _g in 1..=gens {
-            let population = generate_population(pop, RepresentationType::Binary { dim });
+        for _ in 0..gens {
+            let evaluated: Vec<Indiv> = population.par_iter().map(|ind| {
+                let fitness = match ind {
+                    Representation::Binary(genes) => evaluate_individual(&Representation::Binary(genes.clone()), !maximize),
+                    _ => panic!("Representação inválida"),
+                };
+                if let Representation::Binary(genes) = ind {
+                    Indiv { genes: genes.clone(), fitness }
+                } else { unreachable!() }
+            }).collect();
 
-            for ind in &population {
-                let score_max = evaluate_individual(ind, false);
-                let score_min = evaluate_individual(ind, true);
-
-                if score_max > global_best_score {
-                    global_best_score = score_max;
-                    if let Representation::Binary(genes) = ind {
-                        global_best_genes = Some(genes.clone());
-                    }
-                }
-
-                if score_min > global_worst_score {
-                    global_worst_score = score_min;
-                    if let Representation::Binary(genes) = ind {
-                        global_worst_genes = Some(genes.clone());
-                    }
+            for ind in &evaluated {
+                if maximize && ind.fitness > global_best_score {
+                    global_best_score = ind.fitness;
+                    global_best_genes = Some(ind.genes.clone());
+                } else if !maximize && ind.fitness < global_best_score {
+                    global_best_score = ind.fitness;
+                    global_best_genes = Some(ind.genes.clone());
                 }
             }
 
-            let evaluated: Vec<Indiv> = population.iter().map(|ind| {
-                let fitness = evaluate_individual(ind, false);
-                let genes = if let Representation::Binary(g) = ind {
-                    g.clone()
-                } else {
-                    panic!("Representação inválida");
-                };
-                Indiv { genes, fitness }
-            }).collect();
+            let mean_fitness: f64 = evaluated.par_iter().map(|ind| ind.fitness).sum::<f64>() / evaluated.len() as f64;
 
             let selecionados = roulette(&evaluated, evaluated.len() / 2);
-            println!("Indivíduos selecionados (roleta): {:?} tamanho {:?}", selecionados, selecionados.len());
+            let crossover = apply_crossover(&selecionados, 0.8);
+
+            population = crossover
+                .into_iter()
+                .map(|ind| Representation::Binary(ind.genes))
+                .collect();
+
+            // println!("Geração -> Max fitness: {:.4}, Média: {:.4}", global_best_score, mean_fitness);
         }
 
         if let Some(best_genes) = global_best_genes {
             println!(
-                "Run {} -> Maximização: genes = {:?} | Valor de x = {:?} | fitness = {:.4}",
+                "Run {} -> Melhor indivíduo: genes = {} | Valor de x = {:.4} | fitness = {:.4}",
                 run, print_bits(&best_genes), gen_to_fen_fl(&best_genes, -2.0, 2.0, 16), global_best_score
-            );
-        }
-
-        if let Some(worst_genes) = global_worst_genes {
-            println!(
-                "Run {} -> Minimização: genes = {:?} | Valor de x = {:?} | fitness = {:.4}\n",
-                run, print_bits(&worst_genes), gen_to_fen_fl(&worst_genes, -2.0, 2.0, 16), global_worst_score
             );
         }
     });
