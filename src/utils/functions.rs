@@ -4,10 +4,11 @@ use serde_json;
 use serde::Deserialize;
 use std::fs;
 use rand::Rng;
+use bitvec::prelude::*; // necessário para BitVec
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum Representation {
-    Binary(String),     // agora é string
+    Binary(BitVec),     // agora é BitVec
     Integer(Vec<i32>),
     IntPerm(Vec<i32>),
     Real(Vec<f64>),
@@ -27,9 +28,10 @@ pub fn generate_population(pop_size: usize, repr: RepresentationType) -> Vec<Rep
     match repr {
         RepresentationType::Binary { dim } => (0..pop_size)
             .map(|_| {
-                let genes: String = (0..dim)
-                    .map(|_| if rng.gen_bool(0.5) { '1' } else { '0' })
-                    .collect();
+                let mut genes: BitVec = BitVec::with_capacity(dim);
+                for _ in 0..dim {
+                    genes.push(rng.gen_bool(0.5));
+                }
                 Representation::Binary(genes)
             })
             .collect(),
@@ -71,47 +73,40 @@ pub fn read_config(path: &str) -> Config {
     serde_json::from_str(&data).expect("Falha ao parsear JSON")
 }
 
-// Converte string binária para decimal (LSB à esquerda)
-pub fn bin_to_dec(bits: &str) -> u32 {
-    let digits: Vec<u32> = bits
-        .chars()
-        .map(|c| c.to_digit(10).expect("Deve ser 0 ou 1"))
-        .collect();
+pub fn print_bits(bits: &BitVec) -> String {
+    bits.iter().map(|b| if *b { '1' } else { '0' }).collect()
+}
 
+// Converte BitVec binário para decimal (LSB à esquerda)
+pub fn bitvec_to_dec(bits: &BitSlice) -> u32 {
     let mut value = 0;
-    for (i, &bit) in digits.iter().enumerate() {
-        if bit == 1 {
+    for (i, bit) in bits.iter().enumerate() {
+        if *bit {
             value += 1 << i; // LSB à esquerda
         }
     }
-
     value
 }
 
-// Converte binário (string) para valor float no intervalo [min, max]
-pub fn gen_to_fen(bits: &str, min: u32, max: u32, bit_length: u32) -> f64 {
+// Converte BitVec para valor float no intervalo [min, max]
+pub fn gen_to_fen(bits: &BitSlice, min: u32, max: u32, bit_length: u32) -> f64 {
     let min_f = min as f64;
     let max_f = max as f64;
-    let val = min_f + ((max_f - min_f) / ((2.0f64).powi(bit_length as i32) - 1.0)) * (bin_to_dec(bits) as f64);
+    let val = min_f + ((max_f - min_f) / ((2.0f64).powi(bit_length as i32) - 1.0)) * (bitvec_to_dec(bits) as f64);
     val
 }
 
-pub fn gen_to_fen_fl(bits: &str, min: f64, max: f64, bit_length: i32) -> f64 {
-    let num = bin_to_dec(bits) as f64;
-    let val = min + (num / ((2.0f64).powi(bit_length) - 1.0)) * (max - min);
-    val
+pub fn gen_to_fen_fl(bits: &BitSlice, min: f64, max: f64, bit_length: i32) -> f64 {
+    let num = bitvec_to_dec(bits) as f64;
+    min + (num / ((2.0f64).powi(bit_length) - 1.0)) * (max - min)
 }
 
-
+// --- Exemplo de main para teste ---
 fn main() {
-    // Exemplo
     let pop = generate_population(5, RepresentationType::Binary { dim: 10 });
     for ind in pop {
-        match ind {
-            Representation::Binary(b) => {
-                println!("Binário: {}, Decimal: {}, Fen: {:.2}", b, bin_to_dec(&b), gen_to_fen(&b, 0, 40, 10));
-            }
-            _ => {}
+        if let Representation::Binary(b) = ind {
+            println!("Binário: {:?}, Decimal: {}, Fen: {:.2}", b, bitvec_to_dec(&b), gen_to_fen(&b, 0, 40, 10));
         }
     }
 }
