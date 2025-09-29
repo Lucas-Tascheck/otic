@@ -22,7 +22,7 @@ pub fn evaluate_individual(ind: &Representation, minimize: bool) -> f64 {
     }
 }
 
-pub fn run_exercicio1(pop: usize, dim: usize, gens: usize, runs: usize, maximize: bool) {
+pub fn run_exercicio1(pop: usize, dim: usize, gens: usize, runs: usize, crossover_prob: f64, mutation_prob: f64, maximize: bool) {
     println!("=== EX 1: Função Algébrica Otimizada ===");
 
     (1..=runs).into_par_iter().for_each(|run| {
@@ -55,7 +55,9 @@ pub fn run_exercicio1(pop: usize, dim: usize, gens: usize, runs: usize, maximize
             let mean_fitness: f64 = evaluated.par_iter().map(|ind| ind.fitness).sum::<f64>() / evaluated.len() as f64;
 
             let selecionados = roulette(&evaluated, evaluated.len() / 2);
-            let crossover = apply_crossover(&selecionados, 0.8);
+            let mut crossover = apply_crossover(&selecionados, crossover_prob);
+
+            mutation(&mut crossover, mutation_prob);
 
             population = crossover
                 .into_iter()

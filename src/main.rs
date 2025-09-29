@@ -38,7 +38,7 @@ fn main() {
     // maximize:
     //           c_min = 4.0;
     //           ((fx + c_min)/normalize).max(0.0)
-    //run_exercicio1(pop_size, 16, gens, runs, true);
+    run_exercicio1(pop_size, 16, gens, runs, 0.8, 0.05, true);
 
     //EX 2: Fabrica de Rádios
     //Maximização: genes = "1111111110" | fitness = 0.7571 | Lucro = 1029.68
@@ -48,7 +48,7 @@ fn main() {
     // Objective function = (30.0 * st + 40.0 * lx) / 1360.0
     // Penalty funciton = ((st + 2.0 * lx - 40.0) / 16.0).max(0.0)
     // Fitness = Objective function - k * Penalty funciton
-    run_exercicio2(pop_size, 10, gens, runs, 1.0)
+    //run_exercicio2(pop_size, 10, gens, runs, 0.8, 0.05, 1.0)
 }
 
 // TO-DO:

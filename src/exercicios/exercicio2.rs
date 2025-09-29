@@ -39,7 +39,7 @@ pub fn lucro_radios(genes: &BitVec) -> f64 {
     objective_fn(st, lx) * 1360.0
 }
 
-pub fn run_exercicio2(pop: usize, dim: usize, gens: usize, runs: usize, k: f64) {
+pub fn run_exercicio2(pop: usize, dim: usize, gens: usize, runs: usize, crossover_prob: f64, mutation_prob: f64, k: f64) {
     println!("=== EX 2: Maximização e Minimização do Problema Dos Rádios ===");
     
     (1..=runs).into_par_iter().for_each(|run| {
@@ -68,7 +68,9 @@ pub fn run_exercicio2(pop: usize, dim: usize, gens: usize, runs: usize, k: f64) 
             let mean_fitness: f64 = evaluated.par_iter().map(|ind| ind.fitness).sum::<f64>() / evaluated.len() as f64;
 
             let selecionados = roulette(&evaluated, evaluated.len() / 2);
-            let crossover = apply_crossover(&selecionados, 0.8);
+            let mut crossover = apply_crossover(&selecionados, crossover_prob);
+
+            mutation(&mut crossover, mutation_prob);
 
             population = crossover
                 .into_iter()

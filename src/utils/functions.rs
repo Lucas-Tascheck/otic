@@ -158,3 +158,17 @@ pub fn apply_crossover(pairs: &[(&Indiv, &Indiv)], crossover_prob: f64) -> Vec<I
 
     offspring
 }
+
+pub fn mutation(population: &mut [Indiv], mutation_prob: f64) {
+    let mut rng = rand::thread_rng();
+
+    for ind in population.iter_mut() {
+        for i in 0..ind.genes.len() {
+            if rng.gen_bool(mutation_prob) {
+                let current = ind.genes[i];
+                ind.genes.set(i, !current);
+                println!("Teve Mutação!");
+            }
+        }
+    }
+}
