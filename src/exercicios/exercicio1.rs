@@ -31,6 +31,10 @@ pub fn run_exercicio1(pop: usize, dim: usize, gens: usize, runs: usize, crossove
 
         let mut population: Vec<Representation> = generate_population(pop, RepresentationType::Binary { dim });
 
+        let mut best_per_gen = Vec::with_capacity(gens);
+        let mut mean_per_gen = Vec::with_capacity(gens);
+        let mut worst_per_gen = Vec::with_capacity(gens);
+
         for _ in 0..gens {
             let evaluated: Vec<Indiv> = population.par_iter().map(|ind| {
                 let fitness = match ind {
@@ -52,7 +56,13 @@ pub fn run_exercicio1(pop: usize, dim: usize, gens: usize, runs: usize, crossove
                 }
             }
 
-            let mean_fitness: f64 = evaluated.par_iter().map(|ind| ind.fitness).sum::<f64>() / evaluated.len() as f64;
+            let best = evaluated.iter().map(|ind| ind.fitness).fold(f64::MIN, f64::max);
+            let worst = evaluated.iter().map(|ind| ind.fitness).fold(f64::MAX, f64::min);
+            let mean = evaluated.iter().map(|ind| ind.fitness).sum::<f64>() / evaluated.len() as f64;
+
+            best_per_gen.push(best);
+            mean_per_gen.push(mean);
+            worst_per_gen.push(worst);
 
             let selecionados = roulette(&evaluated, evaluated.len() / 2);
             let mut crossover = apply_crossover(&selecionados, crossover_prob);
@@ -66,6 +76,9 @@ pub fn run_exercicio1(pop: usize, dim: usize, gens: usize, runs: usize, crossove
 
             // println!("Geração -> Max fitness: {:.4}, Média: {:.4}", global_best_score, mean_fitness);
         }
+
+        let filename = format!("convergencia_EX1_run{}.png", run);
+        plot_convergence(&best_per_gen, &mean_per_gen, &worst_per_gen, &filename);
 
         if let Some(best_genes) = global_best_genes {
             println!(

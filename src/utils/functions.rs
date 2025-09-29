@@ -5,6 +5,8 @@ use std::fs;
 use rand::Rng;
 use rayon::prelude::*;
 use bitvec::prelude::*;
+use plotters::prelude::{BitMapBackend, ChartBuilder, LineSeries, PathElement, IntoDrawingArea};
+use plotters::style::{RED, BLUE, GREEN, WHITE, BLACK};
 
 #[derive(Debug, Clone)]
 pub enum Representation {
@@ -167,8 +169,43 @@ pub fn mutation(population: &mut [Indiv], mutation_prob: f64) {
             if rng.gen_bool(mutation_prob) {
                 let current = ind.genes[i];
                 ind.genes.set(i, !current);
-                println!("Teve Mutação!");
+                //println!("Teve Mutação!");
             }
         }
     }
+}
+
+pub fn plot_convergence(best: &[f64], mean: &[f64], worst: &[f64], filename: &str) {
+    let gens = best.len();
+    let root = BitMapBackend::new(filename, (800, 600)).into_drawing_area();
+    root.fill(&WHITE).unwrap();
+    let mut chart = ChartBuilder::on(&root)
+        .caption("Convergência do GA", ("sans-serif", 30))
+        .margin(10)
+        .x_label_area_size(40)
+        .y_label_area_size(40)
+        .build_cartesian_2d(0..gens, 0.0..1.0)
+        .unwrap();
+
+    chart.configure_mesh().draw().unwrap();
+
+    chart
+        .draw_series(LineSeries::new(best.iter().enumerate().map(|(i, &v)| (i, v)), &RED))
+        .unwrap()
+        .label("Melhor")
+        .legend(|(x, y)| PathElement::new(vec![(x, y), (x + 20, y)], &RED));
+
+    chart
+        .draw_series(LineSeries::new(mean.iter().enumerate().map(|(i, &v)| (i, v)), &BLUE))
+        .unwrap()
+        .label("Média")
+        .legend(|(x, y)| PathElement::new(vec![(x, y), (x + 20, y)], &BLUE));
+
+    chart
+        .draw_series(LineSeries::new(worst.iter().enumerate().map(|(i, &v)| (i, v)), &GREEN))
+        .unwrap()
+        .label("Pior")
+        .legend(|(x, y)| PathElement::new(vec![(x, y), (x + 20, y)], &GREEN));
+
+    chart.configure_series_labels().border_style(&BLACK).draw().unwrap();
 }
