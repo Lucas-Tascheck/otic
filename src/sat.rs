@@ -127,8 +127,10 @@ pub fn run_3sat(pop: usize, gens: usize, runs: usize, crossover_prob: f64, mutat
             mean_per_gen.push(mean);
             worst_per_gen.push(worst);
 
-            let selecionados = roulette(&evaluated, evaluated.len() / 2);
-            let mut crossover = apply_crossover(&selecionados, crossover_prob);
+            //let selecionados = roulette(&evaluated, evaluated.len() / 2);
+            let selecionados = tournament_selection(&evaluated, evaluated.len() / 2, 5);
+            //let mut crossover = apply_crossover(&selecionados, crossover_prob);
+            let mut crossover = uniform_crossover(&selecionados, 0.8);
 
             mutation(&mut crossover, mutation_prob);
 

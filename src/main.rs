@@ -29,7 +29,7 @@ fn main() {
     // Parametros: POP, DIM, GENS, RUNS
 
     // Exercicio 3 SAT
-    run_3sat(10, gens, runs, 0.8, 0.01, "./sat.cnf");
+    run_3sat(10, gens, runs, 0.8, 0.005, "./sat.cnf");
 
     // EX 1: Maximização de Função Algébrica 
     // valor otimo para X = 1.8904170901022

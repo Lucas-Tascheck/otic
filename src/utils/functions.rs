@@ -209,3 +209,58 @@ pub fn plot_convergence(best: &[f64], mean: &[f64], worst: &[f64], filename: &st
 
     chart.configure_series_labels().border_style(&BLACK).draw().unwrap();
 }
+
+pub fn tournament_selection(population: &[Indiv], num_pairs: usize, k: usize) -> Vec<(&Indiv, &Indiv)> {
+    let mut rng = rand::thread_rng();
+    let mut selected = Vec::with_capacity(num_pairs);
+
+    for _ in 0..num_pairs {
+        // Seleciona pai 1
+        let mut candidates: Vec<&Indiv> = population.choose_multiple(&mut rng, k).collect();
+        candidates.sort_by(|a, b| b.fitness.partial_cmp(&a.fitness).unwrap());
+        let parent1 = candidates[0];
+
+        // Seleciona pai 2 (garante diferente)
+        let mut parent2;
+        loop {
+            let mut candidates: Vec<&Indiv> = population.choose_multiple(&mut rng, k).collect();
+            candidates.sort_by(|a, b| b.fitness.partial_cmp(&a.fitness).unwrap());
+            parent2 = candidates[0];
+            if parent2.genes != parent1.genes {
+                break;
+            }
+        }
+
+        selected.push((parent1, parent2));
+    }
+
+    selected
+}
+
+pub fn uniform_crossover(pairs: &[(&Indiv, &Indiv)], crossover_prob: f64) -> Vec<Indiv> {
+    let mut rng = rand::thread_rng();
+    let mut offspring = Vec::with_capacity(pairs.len() * 2);
+
+    for (p1, p2) in pairs {
+        if rng.gen_bool(crossover_prob) {
+            let len = p1.genes.len();
+            let mut child1 = p1.genes.clone();
+            let mut child2 = p2.genes.clone();
+
+            for i in 0..len {
+                if rng.gen_bool(0.5) {
+                    child1.set(i, p2.genes[i]);
+                    child2.set(i, p1.genes[i]);
+                }
+            }
+
+            offspring.push(Indiv { genes: child1, fitness: 0.0 });
+            offspring.push(Indiv { genes: child2, fitness: 0.0 });
+        } else {
+            offspring.push((*p1).clone());
+            offspring.push((*p2).clone());
+        }
+    }
+
+    offspring
+}
