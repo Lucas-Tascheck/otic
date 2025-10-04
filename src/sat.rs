@@ -15,7 +15,6 @@ pub struct SATInstance {
     pub n_vars: usize,
 }
 
-// --- Carrega CNF ---
 pub fn load_cnf(path: &str) -> SATInstance {
     let file = File::open(path).expect("Erro ao abrir arquivo CNF");
     let reader = BufReader::new(file);
@@ -52,7 +51,6 @@ pub fn load_cnf(path: &str) -> SATInstance {
     SATInstance { clauses, n_vars }
 }
 
-// --- Avalia um indivíduo ---
 pub fn evaluate(instance: &SATInstance, assignment: &BitVec) -> i32 {
     let mut satisfied = 0;
     for clause in &instance.clauses {
@@ -83,7 +81,6 @@ pub fn evaluate_individual(ind: &Representation, instance: &SATInstance) -> f64 
     }
 }
 
-// --- Executa GA para 3-SAT ---
 pub fn run_3sat(pop: usize, gens: usize, runs: usize, crossover_prob: f64, mutation_prob: f64, cnf_path: &str) {
     println!("\n=== EX 3: Problema 3-SAT ===");
 
@@ -112,6 +109,11 @@ pub fn run_3sat(pop: usize, gens: usize, runs: usize, crossover_prob: f64, mutat
                 } else { unreachable!() }
             }).collect();
 
+            let current_best_indiv = evaluated.iter()
+                .max_by(|a, b| a.fitness.partial_cmp(&b.fitness).unwrap())
+                .unwrap();
+            
+
             for ind in &evaluated {
                 if ind.fitness > global_best_score {
                     global_best_score = ind.fitness;
@@ -127,12 +129,22 @@ pub fn run_3sat(pop: usize, gens: usize, runs: usize, crossover_prob: f64, mutat
             mean_per_gen.push(mean);
             worst_per_gen.push(worst);
 
-            //let selecionados = roulette(&evaluated, evaluated.len() / 2);
-            let selecionados = tournament_selection(&evaluated, evaluated.len() / 2, 5);
-            //let mut crossover = apply_crossover(&selecionados, crossover_prob);
-            let mut crossover = uniform_crossover(&selecionados, 0.8);
+            let selecionados = tournament_selection(&evaluated, evaluated.len() / 2, 4);
+            let mut crossover = apply_crossover(&selecionados, crossover_prob);
+            //let mut crossover = uniform_crossover(&selecionados, crossover_prob);
 
             mutation(&mut crossover, mutation_prob);
+
+            if pop > 0 {
+                let worst_offspring_index = crossover.iter().enumerate()
+                    .min_by(|(_, a), (_, b)| a.fitness.partial_cmp(&b.fitness).unwrap_or(std::cmp::Ordering::Equal))
+                    .map(|(i, _)| i)
+                    .unwrap_or(0); 
+
+                let elite = current_best_indiv.clone();
+                
+                crossover[worst_offspring_index] = elite;
+            }
 
             population = crossover
                 .into_iter()
@@ -145,7 +157,6 @@ pub fn run_3sat(pop: usize, gens: usize, runs: usize, crossover_prob: f64, mutat
 
         if let Some(best_genes) = global_best_genes {
             let satisfied = evaluate(&instance, &best_genes);
-            // let assignment: Vec<_> = best_genes.iter().map(|b| if *b { 1 } else { 0 }).collect();
             println!(
                 "Run {} -> Melhor indivíduo: {:?} | Cláusulas satisfeitas = {}/{} | fitness = {:.4}",
                 run,
