@@ -48,7 +48,7 @@ fn main() {
     // Objective function = (30.0 * st + 40.0 * lx) / 1360.0
     // Penalty funciton = ((st + 2.0 * lx - 40.0) / 16.0).max(0.0)
     // Fitness = Objective function - k * Penalty funciton
-    run_exercicio2(pop_size, 10, gens, runs, 0.9, 0.005, 1.0)
+    run_exercicio2(pop_size, 10, gens, runs, 0.9, 0.004, 1.0)
 }
 
 // TO-DO:

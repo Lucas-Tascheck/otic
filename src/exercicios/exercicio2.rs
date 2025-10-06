@@ -1,6 +1,8 @@
 use crate::utils::functions::*;
 use rayon::prelude::*;
 use bitvec::prelude::BitVec;
+use std::sync::Mutex;
+use csv::Writer;
 
 fn objective_fn(st: f64, lx: f64) -> f64 {
     if st + lx == 0.0 {
@@ -40,8 +42,10 @@ pub fn lucro_radios(genes: &BitVec) -> f64 {
 }
 
 pub fn run_exercicio2(pop: usize, dim: usize, gens: usize, runs: usize, crossover_prob: f64, mutation_prob: f64, k: f64) {
-    println!("=== EX 2: Maximização e Minimização do Problema Dos Rádios ===");
-    
+    println!("=== EX 2: Problema Dos Rádios (com boxplot) ===");
+
+    let writer = Mutex::new(Writer::from_path("boxplot_radios.csv").unwrap());
+
     (1..=runs).into_par_iter().for_each(|run| {
         let mut global_best_score = 0.0;
         let mut global_best_genes: Option<BitVec> = None;
@@ -77,11 +81,9 @@ pub fn run_exercicio2(pop: usize, dim: usize, gens: usize, runs: usize, crossove
             mean_per_gen.push(mean);
             worst_per_gen.push(worst);
 
-            // let selecionados = roulette(&evaluated, evaluated.len() / 2);
+            // seleção, crossover e mutação
             let selecionados = tournament_selection(&evaluated, evaluated.len() / 2, 3);
             let mut crossover = apply_crossover(&selecionados, crossover_prob);
-            //let mut crossover = uniform_crossover(&selecionados, crossover_prob);
-
             mutation(&mut crossover, mutation_prob);
 
             population = crossover
@@ -89,19 +91,28 @@ pub fn run_exercicio2(pop: usize, dim: usize, gens: usize, runs: usize, crossove
                 .map(|ind| Representation::Binary(ind.genes))
                 .collect();
         }
-        for (i, ind) in population.iter().enumerate() {
-            if let Representation::Binary(genes) = ind {
-                println!("Ind {} -> {}", i + 1, print_bits(genes));
-            }
+
+        // salva resultados para boxplot
+        let mut w = writer.lock().unwrap();
+        for (generation, best) in best_per_gen.iter().enumerate() {
+            w.write_record(&[
+                run.to_string(),
+                generation.to_string(),
+                best.to_string(),
+            ]).unwrap();
         }
 
-        let filename = format!("convergencia_EX2_run{}.png", run);
+        // gera gráfico de convergência
+        let filename = format!("convergencia_radios_run{}.png", run);
         plot_convergence(&best_per_gen, &mean_per_gen, &worst_per_gen, &filename);
 
         if let Some(best_genes) = &global_best_genes {
             println!(
-                "Run {} -> Maximização: genes = {:?} | fitness = {:.4} | Lucro = {:.2}",
-                run, print_bits(&best_genes), global_best_score, lucro_radios(best_genes)
+                "Run {} -> Melhor indivíduo: {:?} | fitness = {:.4} | Lucro = {:.2}",
+                run,
+                print_bits(&best_genes),
+                global_best_score,
+                lucro_radios(best_genes)
             );
         }
     });
