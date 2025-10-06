@@ -175,39 +175,68 @@ pub fn mutation(population: &mut [Indiv], mutation_prob: f64) {
     }
 }
 
+use plotters::prelude::*;
+
 pub fn plot_convergence(best: &[f64], mean: &[f64], worst: &[f64], filename: &str) {
     let gens = best.len();
-    let root = BitMapBackend::new(filename, (800, 600)).into_drawing_area();
+    let root = BitMapBackend::new(filename, (1000, 700)).into_drawing_area();
     root.fill(&WHITE).unwrap();
+
     let mut chart = ChartBuilder::on(&root)
-        .caption("Convergência do GA", ("sans-serif", 30))
-        .margin(10)
-        .x_label_area_size(40)
-        .y_label_area_size(40)
+        .caption("Convergência do AG", ("sans-serif", 35))
+        .margin(5)
+        .x_label_area_size(60)
+        .y_label_area_size(60)
         .build_cartesian_2d(0..gens, 0.0..1.0)
         .unwrap();
 
-    chart.configure_mesh().draw().unwrap();
+    chart
+        .configure_mesh()
+        .x_desc("Gerações")
+        .y_desc("Fitness")
+        .label_style(("sans-serif", 18))
+        .axis_desc_style(("sans-serif", 22))
+        .light_line_style(&WHITE.mix(0.8))
+        .draw()
+        .unwrap();
+
+    // Linhas mais grossas
+    chart
+    .draw_series(LineSeries::new(
+        best.iter().enumerate().map(|(i, &v)| (i, v)),
+        RED.mix(0.9).stroke_width(3),
+    ))
+    .unwrap()
+    .label("Melhor")
+    .legend(|(x, y)| PathElement::new(vec![(x, y), (x + 30, y)], RED.mix(0.9).stroke_width(3)));
 
     chart
-        .draw_series(LineSeries::new(best.iter().enumerate().map(|(i, &v)| (i, v)), &RED))
-        .unwrap()
-        .label("Melhor")
-        .legend(|(x, y)| PathElement::new(vec![(x, y), (x + 20, y)], &RED));
-
-    chart
-        .draw_series(LineSeries::new(mean.iter().enumerate().map(|(i, &v)| (i, v)), &BLUE))
+        .draw_series(LineSeries::new(
+            mean.iter().enumerate().map(|(i, &v)| (i, v)),
+            BLUE.mix(0.9).stroke_width(3),
+        ))
         .unwrap()
         .label("Média")
-        .legend(|(x, y)| PathElement::new(vec![(x, y), (x + 20, y)], &BLUE));
+        .legend(|(x, y)| PathElement::new(vec![(x, y), (x + 30, y)], BLUE.mix(0.9).stroke_width(3)));
 
     chart
-        .draw_series(LineSeries::new(worst.iter().enumerate().map(|(i, &v)| (i, v)), &GREEN))
+        .draw_series(LineSeries::new(
+            worst.iter().enumerate().map(|(i, &v)| (i, v)),
+            GREEN.mix(0.9).stroke_width(3),
+        ))
         .unwrap()
         .label("Pior")
-        .legend(|(x, y)| PathElement::new(vec![(x, y), (x + 20, y)], &GREEN));
+        .legend(|(x, y)| PathElement::new(vec![(x, y), (x + 30, y)], GREEN.mix(0.9).stroke_width(3)));
 
-    chart.configure_series_labels().border_style(&BLACK).draw().unwrap();
+
+    chart
+        .configure_series_labels()
+        .background_style(&WHITE.mix(0.8))
+        .border_style(&BLACK)
+        .label_font(("sans-serif", 20))
+        .position(SeriesLabelPosition::UpperRight)
+        .draw()
+        .unwrap();
 }
 
 pub fn tournament_selection(population: &[Indiv], num_pairs: usize, k: usize) -> Vec<(&Indiv, &Indiv)> {

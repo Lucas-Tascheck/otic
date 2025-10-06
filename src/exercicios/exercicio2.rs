@@ -77,8 +77,10 @@ pub fn run_exercicio2(pop: usize, dim: usize, gens: usize, runs: usize, crossove
             mean_per_gen.push(mean);
             worst_per_gen.push(worst);
 
-            let selecionados = roulette(&evaluated, evaluated.len() / 2);
+            // let selecionados = roulette(&evaluated, evaluated.len() / 2);
+            let selecionados = tournament_selection(&evaluated, evaluated.len() / 2, 3);
             let mut crossover = apply_crossover(&selecionados, crossover_prob);
+            //let mut crossover = uniform_crossover(&selecionados, crossover_prob);
 
             mutation(&mut crossover, mutation_prob);
 
