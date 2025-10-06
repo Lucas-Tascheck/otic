@@ -2,8 +2,8 @@ import pandas as pd
 import matplotlib.pyplot as plt
 
 # Lê o CSV gerado pelo Rust
-# df = pd.read_csv("boxplot_3sat.csv", header=None, names=["run", "generation", "best"])
-df = pd.read_csv("boxplot_radios.csv", header=None, names=["run", "generation", "best"])
+df = pd.read_csv("boxplot_3sat.csv", header=None, names=["run", "generation", "best"])
+# df = pd.read_csv("boxplot_radios.csv", header=None, names=["run", "generation", "best"])
 
 # Garante os tipos corretos
 df["run"] = df["run"].astype(int)
@@ -20,12 +20,12 @@ plt.boxplot(best_final_per_run,
             boxprops=dict(facecolor="#f7c89f", color="black"),
             medianprops=dict(color="orange"))
 
-plt.title("Problema dos Rádios - Distribuição dos Melhores Finais", fontsize=14)
+plt.title("Problema 3-SAT", fontsize=14)
 plt.ylabel("Fitness")
-plt.xticks([1], ["Todas as Runs"])
+plt.xticks([1], ["10 Runs"])
 plt.grid(True, axis="y", linestyle="--", alpha=0.7)
 
 plt.tight_layout()
-# plt.savefig("boxplot_3sat_final.png", dpi=300, bbox_inches='tight')
-plt.savefig("boxplot_radios_final.png", dpi=300, bbox_inches='tight')
+plt.savefig("boxplot_3sat_final.png", dpi=300, bbox_inches='tight')
+# plt.savefig("boxplot_radios_final.png", dpi=300, bbox_inches='tight')
 plt.show()
