@@ -6,6 +6,7 @@ use utils::functions::*;
 use sat::*;
 use exercicios::exercicio1::*;
 use exercicios::exercicio2::*;
+use exercicios::multi_objetiva::*;
 
 fn main() {
     let data = read_config("./src/config.json");
@@ -48,7 +49,10 @@ fn main() {
     // Objective function = (30.0 * st + 40.0 * lx) / 1360.0
     // Penalty funciton = ((st + 2.0 * lx - 40.0) / 16.0).max(0.0)
     // Fitness = Objective function - k * Penalty funciton
-    run_exercicio2(pop_size, 10, gens, runs, 0.9, 0.004, 1.0)
+    // run_exercicio2(pop_size, 10, gens, runs, 0.9, 0.004, 1.0);
+
+    //EX Multi Objetivo:
+    run_multi_objetiva(pop_size, 10, gens, runs, 0.8, 0.01);
 }
 
 // TO-DO:
