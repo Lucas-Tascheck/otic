@@ -52,7 +52,8 @@ fn main() {
     // run_exercicio2(pop_size, 10, gens, runs, 0.9, 0.004, 1.0);
 
     //EX Multi Objetivo:
-    run_multi_objetiva(pop_size, 10, gens, runs, 0.8, 0.01);
+    // run_multi_objetiva(pop_size, 10, gens, runs, 0.8, 0.01);
+    run_nsga2(pop_size, 10, gens, runs, 0.8, 0.01)
 }
 
 // TO-DO:
