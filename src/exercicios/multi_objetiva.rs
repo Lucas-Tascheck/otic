@@ -7,7 +7,8 @@ use plotters::prelude::*;
 use std::collections::HashMap;
 use crate::utils::functions::*;
 use plotters::style::{TextStyle, IntoFont};
-
+use std::fs::File;
+use std::io::Write;
 
 fn dominates(a: &IndivMO, b: &IndivMO) -> bool {
     let mut strictly_better = false;
@@ -385,6 +386,122 @@ pub fn plot_pareto_levels(
     );
 }
 
+fn spacing(pop: &[IndivMO]) -> f64 {
+    if pop.len() < 2 {
+        return 0.0;
+    }
+
+    let mut distances = Vec::new();
+    for i in 0..pop.len() {
+        let mut d_min = f64::INFINITY;
+        for j in 0..pop.len() {
+            if i != j {
+                let d = (0..pop[i].objectives.len())
+                    .map(|k| (pop[i].objectives[k] - pop[j].objectives[k]).abs())
+                    .sum::<f64>();
+                if d < d_min {
+                    d_min = d;
+                }
+            }
+        }
+        distances.push(d_min);
+    }
+
+    let mean_d = distances.iter().sum::<f64>() / distances.len() as f64;
+    let sum_sq = distances.iter().map(|&d| (d - mean_d).powi(2)).sum::<f64>();
+    (sum_sq / (distances.len() as f64 - 1.0)).sqrt()
+}
+
+fn hypervolume(pop: &[IndivMO], reference: (f64, f64)) -> f64 {
+    let mut pts: Vec<(f64, f64)> = pop.iter()
+        .map(|ind| (ind.objectives[0], ind.objectives[1]))
+        .collect();
+
+    if pts.is_empty() {
+        return 0.0;
+    }
+
+    // Ordena pelo f1 crescente
+    pts.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap());
+
+    let mut hv = 0.0;
+    let mut prev_f1 = 0.0; // assume 0 como mínimo de f1
+    for &(f1, f2) in &pts {
+        let width = (f1 - prev_f1).max(0.0);
+        let height = (reference.1 - f2).max(0.0);
+        hv += width * height;
+        prev_f1 = f1;
+    }
+
+    // Adiciona retângulo final até o ponto de referência
+    let last_f1 = pts.last().unwrap().0;
+    let last_f2 = pts.last().unwrap().1;
+    hv += (reference.0 - last_f1).max(0.0) * (reference.1 - last_f2).max(0.0);
+
+    hv
+}
+
+pub fn plot_metric_comparativo(
+    values1: &[f64],
+    values2: &[f64],
+    label1: &str,
+    label2: &str,
+    metric_name: &str,
+    filename: &str,
+) {
+    let root = BitMapBackend::new(filename, (900, 600)).into_drawing_area();
+    root.fill(&WHITE).unwrap();
+
+    let min_val = values1.iter().chain(values2.iter()).cloned().fold(f64::INFINITY, f64::min);
+    let max_val = values1.iter().chain(values2.iter()).cloned().fold(f64::NEG_INFINITY, f64::max);
+    let x_range = 0..values1.len();
+    let y_range = (min_val * 0.95)..(max_val * 1.05);
+
+    let mut chart = ChartBuilder::on(&root)
+        .caption(format!("{} ao longo das gerações", metric_name), ("sans-serif", 28))
+        .margin(40)
+        .x_label_area_size(50)
+        .y_label_area_size(60)
+        .build_cartesian_2d(x_range, y_range)
+        .unwrap();
+
+    chart
+        .configure_mesh()
+        .x_desc("Geração")
+        .y_desc(metric_name)
+        .label_style(("sans-serif", 16))
+        .draw()
+        .unwrap();
+
+    // Linha sólida = valores1
+    chart
+        .draw_series(LineSeries::new(
+            values1.iter().enumerate().map(|(i, &v)| (i, v)),
+            &BLUE,
+        ))
+        .unwrap()
+        .label(label1)
+        .legend(|(x, y)| PathElement::new(vec![(x, y), (x + 20, y)], &BLUE));
+
+    // Linha sólida (ou cor diferente) = valores2
+    chart
+        .draw_series(LineSeries::new(
+            values2.iter().enumerate().map(|(i, &v)| (i, v)),
+            &RED,
+        ))
+        .unwrap()
+        .label(label2)
+        .legend(|(x, y)| PathElement::new(vec![(x, y), (x + 20, y)], &RED));
+
+    chart
+        .configure_series_labels()
+        .border_style(&BLACK)
+        .background_style(&WHITE.mix(0.8))
+        .label_font(("sans-serif", 18))
+        .draw()
+        .unwrap();
+}
+
 pub fn zdt1_discreta(x: &[i32]) -> (f64, f64) {
     let n = x.len();
     assert!(n >= 1, "vetor deve ter pelo menos 1 variável");
@@ -463,6 +580,10 @@ pub fn run_zdt1(
 ) {
     for run in 0..runs {
         println!("================== Execução {} ==================", run + 1);
+        let mut spacing_vals = Vec::new();
+        let mut hypervolume_vals = Vec::new();
+        let mut spacing_vals_nc = Vec::new();
+        let mut hypervolume_vals_nc = Vec::new();
 
         let total_bits = dim * bit_length;
 
@@ -496,8 +617,19 @@ pub fn run_zdt1(
             let offspring = make_offspring(&evaluated, pop_size, crossover_prob, mutation_prob, bit_length as u32, evaluate_individual);
             evaluated = nsga2_select(pop_size, &evaluated, &offspring);
 
+            let spacing_val = spacing(&evaluated);
+            let hv_val = hypervolume(&evaluated, (1.1, 1.1)); 
+            spacing_vals.push(spacing_val);
+            hypervolume_vals.push(hv_val);
+
+            
             let offspring_no_crowd = make_offspring(&evaluated_no_crowd, pop_size, crossover_prob, mutation_prob, bit_length as u32, evaluate_individual);
             evaluated_no_crowd = nsga2_select(pop_size, &evaluated_no_crowd, &offspring_no_crowd);
+
+            let spacing_val_nc = spacing(&evaluated_no_crowd);
+            let hv_val_nc = hypervolume(&evaluated_no_crowd, (1.1, 1.1)); 
+            spacing_vals_nc.push(spacing_val_nc);
+            hypervolume_vals_nc.push(hv_val_nc);
 
             if g % 10 == 0 || g == gens - 1 {
                 println!("Run {} - Geração {}/{}", run+1, g+1, gens);
@@ -506,8 +638,44 @@ pub fn run_zdt1(
 
         let filename = format!("zdt1-run-{}.png", run + 1);
         plot_pareto_levels(&evaluated, &filename, gens, pop_size, dim);
+
         let filename = format!("zdt1_no_crowd-run-{}.png", run + 1);
         plot_pareto_levels(&evaluated_no_crowd, &filename, gens, pop_size, dim);
+
+        plot_metric_comparativo(
+            &spacing_vals,
+            &spacing_vals_nc,
+            "Com crowding",
+            "Sem crowding",
+            "Spacing",
+            &format!("{}_spacing_comp.png", filename)
+        );
+
+        plot_metric_comparativo(
+            &hypervolume_vals,
+            &hypervolume_vals_nc,
+            "Com crowding",
+            "Sem crowding",
+            "Hypervolume",
+            &format!("{}_hypervolume_comp.png", filename)
+        );
+
+        let csv_filename = format!("zdt{}_run{}_metrics.csv", if filename.contains("zdt1") {1} else {3}, run + 1);
+        let mut wtr = File::create(&csv_filename).unwrap();
+        wtr.write_all(b"Generation,Spacing,Crowding_Spacing,Hypervolume,Crowding_Hypervolume\n").unwrap();
+
+        for g in 0..gens {
+            let line = format!("{},{},{},{},{}\n",
+                g+1,
+                spacing_vals[g],
+                spacing_vals_nc[g],
+                hypervolume_vals[g],
+                hypervolume_vals_nc[g]
+            );
+            wtr.write_all(line.as_bytes()).unwrap();
+        }
+
+        println!("✅ CSV salvo em '{}'", csv_filename);
     }
 }
 
@@ -522,6 +690,10 @@ pub fn run_zdt3(
 ) {
     for run in 0..runs {
         println!("================== Execução {} ==================", run + 1);
+        let mut spacing_vals = Vec::new();
+        let mut hypervolume_vals = Vec::new();
+        let mut spacing_vals_nc = Vec::new();
+        let mut hypervolume_vals_nc = Vec::new();
 
         let total_bits = dim * bit_length;
 
@@ -555,8 +727,18 @@ pub fn run_zdt3(
             let offspring = make_offspring(&evaluated, pop_size, crossover_prob, mutation_prob, bit_length as u32, evaluate_individual_zdt3);
             evaluated = nsga2_select(pop_size, &evaluated, &offspring);
 
+            let spacing_val = spacing(&evaluated);
+            let hv_val = hypervolume(&evaluated, (1.1, 1.1)); 
+            spacing_vals.push(spacing_val);
+            hypervolume_vals.push(hv_val);
+            
             let offspring_no_crowd = make_offspring(&evaluated_no_crowd, pop_size, crossover_prob, mutation_prob, bit_length as u32, evaluate_individual_zdt3);
             evaluated_no_crowd = nsga2_select(pop_size, &evaluated_no_crowd, &offspring_no_crowd);
+
+            let spacing_val_nc = spacing(&evaluated_no_crowd);
+            let hv_val_nc = hypervolume(&evaluated_no_crowd, (1.1, 1.1)); 
+            spacing_vals_nc.push(spacing_val_nc);
+            hypervolume_vals_nc.push(hv_val_nc);
 
             if g % 10 == 0 || g == gens - 1 {
                 println!("Run {} - Geração {}/{}", run+1, g+1, gens);
@@ -567,5 +749,40 @@ pub fn run_zdt3(
         plot_pareto_levels(&evaluated, &filename, gens, pop_size, dim);
         let filename = format!("zdt3_no_crowd-run-{}.png", run + 1);
         plot_pareto_levels(&evaluated_no_crowd, &filename, gens, pop_size, dim);
+
+        plot_metric_comparativo(
+            &spacing_vals,
+            &spacing_vals_nc,
+            "Com crowding",
+            "Sem crowding",
+            "Spacing",
+            &format!("{}_spacing_comp.png", filename)
+        );
+
+        plot_metric_comparativo(
+            &hypervolume_vals,
+            &hypervolume_vals_nc,
+            "Com crowding",
+            "Sem crowding",
+            "Hypervolume",
+            &format!("{}_hypervolume_comp.png", filename)
+        );
+
+        let csv_filename = format!("zdt{}_run{}_metrics.csv", if filename.contains("zdt1") {1} else {3}, run + 1);
+        let mut wtr = File::create(&csv_filename).unwrap();
+        wtr.write_all(b"Generation,Spacing,Crowding_Spacing,Hypervolume,Crowding_Hypervolume\n").unwrap();
+
+        for g in 0..gens {
+            let line = format!("{},{},{},{},{}\n",
+                g+1,
+                spacing_vals[g],
+                spacing_vals_nc[g],
+                hypervolume_vals[g],
+                hypervolume_vals_nc[g]
+            );
+            wtr.write_all(line.as_bytes()).unwrap();
+        }
+
+        println!("✅ CSV salvo em '{}'", csv_filename);
     }
 }

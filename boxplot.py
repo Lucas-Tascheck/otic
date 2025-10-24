@@ -1,31 +1,41 @@
 import pandas as pd
 import matplotlib.pyplot as plt
+import glob
 
-# Lê o CSV gerado pelo Rust
-df = pd.read_csv("boxplot_3sat.csv", header=None, names=["run", "generation", "best"])
-# df = pd.read_csv("boxplot_radios.csv", header=None, names=["run", "generation", "best"])
+# Lista de CSVs, um por run
+csv_files = sorted(glob.glob("zdt*_run*_metrics.csv"))
 
-# Garante os tipos corretos
-df["run"] = df["run"].astype(int)
-df["best"] = df["best"].astype(float)
+spacing_com_runs = []
+spacing_sem_runs = []
+hv_com_runs = []
+hv_sem_runs = []
 
-# Pega apenas o melhor da última geração de cada run
-best_final_per_run = [df[df["run"] == r].iloc[-1]["best"] for r in sorted(df["run"].unique())]
+run_labels = []
 
-plt.figure(figsize=(6, 8))
+for file in csv_files:
+    run_num = file.split("_run")[1].split("_")[0]
+    run_labels.append(f"Run {run_num}")
+    df = pd.read_csv(file)
+    
+    # Cada vela = todos os valores ao longo das gerações
+    spacing_com_runs.append(df["Spacing"].values)
+    spacing_sem_runs.append(df["Crowding_Spacing"].values)
+    hv_com_runs.append(df["Hypervolume"].values)
+    hv_sem_runs.append(df["Crowding_Hypervolume"].values)
 
-# Boxplot com uma única vela
-plt.boxplot(best_final_per_run,
-            patch_artist=True,
-            boxprops=dict(facecolor="#f7c89f", color="black"),
-            medianprops=dict(color="orange"))
+# Função para plotar boxplots
+def plot_boxplot(data_list, labels, title, ylabel, filename):
+    plt.figure(figsize=(10, 6))
+    plt.boxplot(data_list, labels=labels)
+    plt.title(title)
+    plt.ylabel(ylabel)
+    plt.savefig(filename)
+    plt.show()
 
-plt.title("Problema 3-SAT", fontsize=14)
-plt.ylabel("Fitness")
-plt.xticks([1], ["10 Runs"])
-plt.grid(True, axis="y", linestyle="--", alpha=0.7)
+# --- Spacing ---
+plot_boxplot(spacing_com_runs, run_labels, "Spacing - Com Crowding", "Spacing", "spacing_com.png")
+plot_boxplot(spacing_sem_runs, run_labels, "Spacing - Sem Crowding", "Spacing", "spacing_sem.png")
 
-plt.tight_layout()
-plt.savefig("boxplot_3sat_final.png", dpi=300, bbox_inches='tight')
-# plt.savefig("boxplot_radios_final.png", dpi=300, bbox_inches='tight')
-plt.show()
+# --- Hypervolume ---
+plot_boxplot(hv_com_runs, run_labels, "Hypervolume - Com Crowding", "Hypervolume", "hv_com.png")
+plot_boxplot(hv_sem_runs, run_labels, "Hypervolume - Sem Crowding", "Hypervolume", "hv_sem.png")
