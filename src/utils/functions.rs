@@ -107,9 +107,10 @@ pub fn gen_to_fen(bits: &BitSlice, min: u32, max: u32, bit_length: u32) -> f64 {
     val
 }
 
-pub fn gen_to_fen_fl(bits: &BitSlice, min: f64, max: f64, bit_length: i32) -> f64 {
+pub fn gen_to_fen_fl(bits: &BitSlice, min: f64, max: f64, bit_length: u32) -> f64 {
     let num = bitvec_to_dec(bits) as f64;
-    min + (num / ((2.0f64).powi(bit_length) - 1.0)) * (max - min)
+    let bit_length_i32 = bit_length as i32; // converte para i32
+    min + (num / ((2.0f64).powi(bit_length_i32) - 1.0)) * (max - min)
 }
 
 pub fn roulette_once<'a>(pool: &'a [Indiv], rng: &mut impl Rng) -> &'a Indiv {

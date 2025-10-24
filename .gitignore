@@ -1,2 +1,4 @@
 /target
-*_run*.png
+.png
+.csv
+Cargo.lock

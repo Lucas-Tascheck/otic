@@ -16,16 +16,16 @@ fn main() {
     let runs = data.runs;
     let gens = data.gens;
 
-    println!("=== EX 1: Populações iniciais ===");
-    let pop_bin = generate_population(10, RepresentationType::Binary { dim: 15 });
-    let pop_int = generate_population(10, RepresentationType::Integer { dim: 15, min: -5, max: 10 });
-    let pop_perm = generate_population(10, RepresentationType::IntPerm { dim: 15 });
-    let pop_real = generate_population(10, RepresentationType::Real { dim: 15, min: -10.0, max: 10.0 });
+    // println!("=== EX 1: Populações iniciais ===");
+    // let pop_bin = generate_population(10, RepresentationType::Binary { dim: 15 });
+    // let pop_int = generate_population(10, RepresentationType::Integer { dim: 15, min: -5, max: 10 });
+    // let pop_perm = generate_population(10, RepresentationType::IntPerm { dim: 15 });
+    // let pop_real = generate_population(10, RepresentationType::Real { dim: 15, min: -10.0, max: 10.0 });
 
-    println!("Exemplo BIN: {:?}", pop_bin[0]);
-    println!("Exemplo INT: {:?}", pop_int[0]);
-    println!("Exemplo PERM: {:?}", pop_perm[0]);
-    println!("Exemplo REAL: {:?}", pop_real[0]);
+    // println!("Exemplo BIN: {:?}", pop_bin[0]);
+    // println!("Exemplo INT: {:?}", pop_int[0]);
+    // println!("Exemplo PERM: {:?}", pop_perm[0]);
+    // println!("Exemplo REAL: {:?}", pop_real[0]);
 
     // Parametros: POP, DIM, GENS, RUNS
 
@@ -52,10 +52,7 @@ fn main() {
     // run_exercicio2(pop_size, 10, gens, runs, 0.9, 0.004, 1.0);
 
     //EX Multi Objetivo:
-    // run_multi_objetiva(pop_size, 10, gens, runs, 0.8, 0.01);
-    run_nsga2(pop_size, 10, gens, runs, 0.8, 0.01)
+    //( População, Num. de valores (Xi), tamanho do Bit, gerações, runs, Prob. Crossover, Prob. Mutação )
+    run_zdt1(pop_size, 30, 10, gens, runs, 0.9, 0.01);
+    run_zdt3(pop_size, 30, 10, gens, runs, 0.9, 0.01);
 }
-
-// TO-DO:
-// Tentar seleção por torneio no 3sat
-// Fazer crossover uniforme no 3sat
