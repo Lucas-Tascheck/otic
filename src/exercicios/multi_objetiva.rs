@@ -6,6 +6,7 @@ use bitvec::prelude::*;
 use plotters::prelude::*;
 use std::collections::HashMap;
 use crate::utils::functions::*;
+use plotters::style::{TextStyle, IntoFont};
 
 
 fn dominates(a: &IndivMO, b: &IndivMO) -> bool {
@@ -238,60 +239,123 @@ fn nsga2_select(next_pop_size: usize, parents: &[IndivMO], children: &[IndivMO])
     new_pop
 }
 
-pub fn plot_pareto_levels(pop: &[IndivMO], filename: &str) {
+fn nsga2_select_no_crowding(next_pop_size: usize, parents: &[IndivMO], children: &[IndivMO]) -> Vec<IndivMO> {
+    let mut combined: Vec<IndivMO> = Vec::with_capacity(parents.len() + children.len());
+    combined.extend_from_slice(parents);
+    combined.extend_from_slice(children);
+
+    let fronts = non_dominated_sort(&combined);
+    let mut new_pop: Vec<IndivMO> = Vec::with_capacity(next_pop_size);
+    let mut rng = rand::thread_rng();
+
+    for front in fronts {
+        if new_pop.len() + front.len() <= next_pop_size {
+            for idx in front {
+                new_pop.push(combined[idx].clone());
+            }
+        } else {
+            let remaining = next_pop_size - new_pop.len();
+            let mut front_indices = front.clone();
+            front_indices.shuffle(&mut rng);
+            for &idx in front_indices.iter().take(remaining) {
+                new_pop.push(combined[idx].clone());
+            }
+            break;
+        }
+    }
+
+    new_pop
+}
+
+pub fn plot_pareto_levels(
+    pop: &[IndivMO],
+    filename: &str,
+    gens: usize,
+    pop_size: usize,
+    n_vars: usize,
+) {
     let fronts = non_dominated_sort(pop);
-    
+
     let f1_vals: Vec<f64> = pop.iter().map(|ind| ind.objectives[0]).collect();
     let f2_vals: Vec<f64> = pop.iter().map(|ind| ind.objectives[1]).collect();
-    
-    let (min_f1, max_f1) = f1_vals
-    .iter()
-    .fold((f64::INFINITY, f64::NEG_INFINITY), |(min, max), &v| (min.min(v), max.max(v)));
-    let (min_f2, max_f2) = f2_vals
-    .iter()
-    .fold((f64::INFINITY, f64::NEG_INFINITY), |(min, max), &v| (min.min(v), max.max(v)));
-    
+
+    let (min_f1, max_f1) = f1_vals.iter().fold(
+        (f64::INFINITY, f64::NEG_INFINITY),
+        |(min, max), &v| (min.min(v), max.max(v)),
+    );
+    let (min_f2, max_f2) = f2_vals.iter().fold(
+        (f64::INFINITY, f64::NEG_INFINITY),
+        |(min, max), &v| (min.min(v), max.max(v)),
+    );
+
     let margin_x = (max_f1 - min_f1) * 0.05;
     let margin_y = (max_f2 - min_f2) * 0.05;
-    
+
     let x_range = (min_f1 - margin_x)..(max_f1 + margin_x);
     let y_range = (min_f2 - margin_y)..(max_f2 + margin_y);
-    
-    let root = BitMapBackend::new(filename, (1200, 850)).into_drawing_area();
-    root.fill(&WHITE).unwrap();
-    
-    let mut chart = ChartBuilder::on(&root)
-    .caption("Fronte de Pareto (NSGA-II) - Níveis de Dominância", ("sans-serif", 30))
-    .margin(15)
-    .x_label_area_size(60)
-    .y_label_area_size(60)
-    .build_cartesian_2d(x_range.clone(), y_range.clone())
-    .unwrap();
-    
+
+    let root_area = BitMapBackend::new(filename, (1200, 850)).into_drawing_area();
+    root_area.fill(&WHITE).unwrap();
+
+    let (top_area, rest_area) = root_area.split_vertically(50);
+    let (subtitle_area, plot_area) = rest_area.split_vertically(50);
+
+    let title_text = "Fronte de Pareto (NSGA-II) - Níveis de Dominância";
+    top_area
+        .titled(
+            title_text,
+            ("sans-serif", 34).into_font().style(FontStyle::Bold),
+        )
+        .unwrap();
+
+    let subtitle_text = format!(
+        "Geração: {}   |   População: {}   |   Variáveis: {}",
+        gens, pop_size, n_vars
+    );
+
+    let (w, h) = subtitle_area.dim_in_pixel();
+    let text_style = TextStyle::from(("sans-serif", 30).into_font()).color(&BLACK);
+
+    // mede o texto aproximadamente pela largura do caractere médio
+    let est_text_width = subtitle_text.len() as i32 * 10; 
+    let text_x = (w as i32 / 2) - (est_text_width / 2) + 20;
+    let text_y = (h as i32 / 2) - 5;
+
+    subtitle_area
+        .draw_text(&subtitle_text, &text_style, (text_x, text_y))
+        .unwrap();
+
+    let mut chart = ChartBuilder::on(&plot_area)
+        .caption("", ("sans-serif", 0))
+        .margin(40)
+        .x_label_area_size(60)
+        .y_label_area_size(60)
+        .build_cartesian_2d(x_range.clone(), y_range.clone())
+        .unwrap();
+
     chart
-    .configure_mesh()
-    .x_desc("f1")
-    .y_desc("f2")
-    .label_style(("sans-serif", 16))
-    .axis_desc_style(("sans-serif", 18))
-    .draw()
-    .unwrap();
-    
+        .configure_mesh()
+        .x_desc("f1")
+        .y_desc("f2")
+        .label_style(("sans-serif", 16))
+        .axis_desc_style(("sans-serif", 18))
+        .draw()
+        .unwrap();
+
     let palette: Vec<RGBColor> = vec![
-        RGBColor(220, 50, 47),   // vermelho
-        RGBColor(38, 139, 210),  // azul
-        RGBColor(42, 161, 152),  // verde
-        RGBColor(155, 89, 182),  // roxo
-        RGBColor(86, 180, 233),  // ciano
-        RGBColor(0, 0, 0),       // preto
-        RGBColor(255, 165, 0),   // laranja
-        RGBColor(255, 215, 0),   // amarelo
-        RGBColor(128, 128, 128), // cinza
-        ];
-        
-        for (i, front) in fronts.iter().enumerate() {
-            let color = palette[i % palette.len()];
-            let pts: Vec<(f64, f64)> = front
+        RGBColor(220, 50, 47),
+        RGBColor(38, 139, 210),
+        RGBColor(42, 161, 152),
+        RGBColor(155, 89, 182),
+        RGBColor(255, 165, 0),
+        RGBColor(255, 215, 0),
+        RGBColor(128, 128, 128),
+        RGBColor(0, 0, 0),
+    ];
+
+    for (i, front) in fronts.iter().enumerate() {
+        let color = palette[i % palette.len()];
+        let pts: Vec<(f64, f64)> = front
             .iter()
             .map(|&idx| {
                 let ind = &pop[idx];
@@ -299,27 +363,27 @@ pub fn plot_pareto_levels(pop: &[IndivMO], filename: &str) {
             })
             .collect();
 
-            chart
+        chart
             .draw_series(pts.iter().map(|&(x, y)| Circle::new((x, y), 4, color.filled())))
             .unwrap()
             .label(format!("Fronte {}", i))
             .legend(move |(x, y)| Circle::new((x, y), 5, color.filled()));
     }
-    
+
     chart
-    .configure_series_labels()
-    .position(SeriesLabelPosition::UpperRight)
+        .configure_series_labels()
+        .position(SeriesLabelPosition::UpperRight)
         .background_style(&WHITE.mix(0.8))
         .border_style(&BLACK)
         .label_font(("sans-serif", 18))
         .draw()
         .unwrap();
-        
-        println!(
-            "✅ Plot de níveis de Pareto salvo em '{}'. Eixos ajustados automaticamente para [{:.3}–{:.3}] x [{:.3}–{:.3}]",
-            filename, min_f1, max_f1, min_f2, max_f2
-        );
-    }
+
+    println!(
+        "✅ Plot salvo em '{}'. Eixos ajustados para [{:.3}–{:.3}] x [{:.3}–{:.3}]",
+        filename, min_f1, max_f1, min_f2, max_f2
+    );
+}
 
 pub fn zdt1_discreta(x: &[i32]) -> (f64, f64) {
     let n = x.len();
@@ -416,9 +480,24 @@ pub fn run_zdt1(
             })
             .collect();
 
+        let mut evaluated_no_crowd: Vec<IndivMO> = population
+            .par_iter()
+            .map(|repr| {
+                if let Representation::Binary(bits) = repr {
+                    let objectives = evaluate_individual(bits, bit_length as u32);
+                    IndivMO::new(bits.clone(), objectives)
+                } else {
+                    panic!("População não é binária");
+                }
+            })
+            .collect();
+
         for g in 0..gens {
             let offspring = make_offspring(&evaluated, pop_size, crossover_prob, mutation_prob, bit_length as u32, evaluate_individual);
             evaluated = nsga2_select(pop_size, &evaluated, &offspring);
+
+            let offspring_no_crowd = make_offspring(&evaluated_no_crowd, pop_size, crossover_prob, mutation_prob, bit_length as u32, evaluate_individual);
+            evaluated_no_crowd = nsga2_select(pop_size, &evaluated_no_crowd, &offspring_no_crowd);
 
             if g % 10 == 0 || g == gens - 1 {
                 println!("Run {} - Geração {}/{}", run+1, g+1, gens);
@@ -426,8 +505,9 @@ pub fn run_zdt1(
         }
 
         let filename = format!("zdt1-run-{}.png", run + 1);
-        plot_pareto_levels(&evaluated, &filename);
-        println!("✅ Fronte final salvo em '{}'", filename);
+        plot_pareto_levels(&evaluated, &filename, gens, pop_size, dim);
+        let filename = format!("zdt1_no_crowd-run-{}.png", run + 1);
+        plot_pareto_levels(&evaluated_no_crowd, &filename, gens, pop_size, dim);
     }
 }
 
@@ -459,9 +539,24 @@ pub fn run_zdt3(
             })
             .collect();
 
+        let mut evaluated_no_crowd: Vec<IndivMO> = population
+            .par_iter()
+            .map(|repr| {
+                if let Representation::Binary(bits) = repr {
+                    let objectives = evaluate_individual_zdt3(bits, bit_length as u32);
+                    IndivMO::new(bits.clone(), objectives)
+                } else {
+                    panic!("População não é binária");
+                }
+            })
+            .collect();
+
         for g in 0..gens {
             let offspring = make_offspring(&evaluated, pop_size, crossover_prob, mutation_prob, bit_length as u32, evaluate_individual_zdt3);
             evaluated = nsga2_select(pop_size, &evaluated, &offspring);
+
+            let offspring_no_crowd = make_offspring(&evaluated_no_crowd, pop_size, crossover_prob, mutation_prob, bit_length as u32, evaluate_individual_zdt3);
+            evaluated_no_crowd = nsga2_select(pop_size, &evaluated_no_crowd, &offspring_no_crowd);
 
             if g % 10 == 0 || g == gens - 1 {
                 println!("Run {} - Geração {}/{}", run+1, g+1, gens);
@@ -469,7 +564,8 @@ pub fn run_zdt3(
         }
 
         let filename = format!("zdt3-run-{}.png", run + 1);
-        plot_pareto_levels(&evaluated, &filename);
-        println!("✅ Fronte final salvo em '{}'", filename);
+        plot_pareto_levels(&evaluated, &filename, gens, pop_size, dim);
+        let filename = format!("zdt3_no_crowd-run-{}.png", run + 1);
+        plot_pareto_levels(&evaluated_no_crowd, &filename, gens, pop_size, dim);
     }
 }
