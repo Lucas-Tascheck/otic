@@ -7,6 +7,7 @@ use sat::*;
 use exercicios::exercicio1::*;
 use exercicios::exercicio2::*;
 use exercicios::multi_objetiva::*;
+use exercicios::nqueens::*;
 
 fn main() {
     let data = read_config("./src/config.json");
@@ -53,6 +54,19 @@ fn main() {
 
     //EX Multi Objetivo:
     //( População, Num. de valores (Xi), tamanho do Bit, gerações, runs, Prob. Crossover, Prob. Mutação )
-    run_zdt1(pop_size, 30, 10, gens, runs, 0.9, 0.01);
-    run_zdt3(pop_size, 30, 10, gens, runs, 0.9, 0.01);
+    // run_zdt1(pop_size, 30, 10, gens, runs, 0.9, 0.01);
+    // run_zdt3(pop_size, 30, 10, gens, runs, 0.9, 0.01);
+
+    //EX N-Queens
+    //Fitness: minimizar os pares sob ataque
+    //Numero de pares unicos N * (N-1) / 2, onde N eh o numero de rainhas
+    //Fitness = (Pontuação Perfeita) - (Nº de Ataques Diagonais)
+    //Order 1 Crossover (OX1).
+    //Swap Mutation (Mutação por Troca).
+    run_nqueens(32, pop_size, gens, runs, 0.85, 0.02);
 }
+
+//TODO:
+// Otimizar N-Queens (32x32 ja quebra legal)
+// Procurar se tem metodos de crossover e mutacao melhores
+// Ver se tem outra opcao mais eficiente de calculo da fitness

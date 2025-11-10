@@ -515,7 +515,7 @@ pub fn zdt1_discreta(x: &[i32]) -> (f64, f64) {
         1.0 + 9.0 * (sum_tail / ((n - 1) as f64))
     };
 
-    let ratio = (f1 / g);
+    let ratio = f1 / g;
     let f2 = g * (1.0 - ratio.sqrt());
     (f1, f2)
 }
