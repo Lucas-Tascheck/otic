@@ -8,6 +8,7 @@ use exercicios::exercicio1::*;
 use exercicios::exercicio2::*;
 use exercicios::multi_objetiva::*;
 use exercicios::nqueens::*;
+use exercicios::nqueens_valued::*;
 
 fn main() {
     let data = read_config("./src/config.json");
@@ -64,7 +65,16 @@ fn main() {
     //Order 1 Crossover (OX1).
     //Swap Mutation (Mutação por Troca).
     // With elitism and tournament selection, mutation is now per-individual
-    run_nqueens(128, pop_size, gens, runs, 0.9, 0.08, 10);
+    // run_nqueens(128, pop_size, gens, runs, 0.9, 0.08, 10);
+
+    //EX N-Queens Valued (Multi-objective)
+    //Minimize attacks AND maximize board position values
+    //Board values: odd rows use sqrt, even rows use log10
+    //Parameters: N-Queens, Population, Generations, Runs, Crossover Prob, Mutation Prob, Max Attempts
+    
+    // Test with N=8 and N=16 as specified
+    run_nqueens_valued(8, 30, gens, 10, 0.9, 0.10, 5);
+    // run_nqueens_valued(16, 30, gens, 10, 0.9, 0.15, 3);
 }
 
 //TODO:
