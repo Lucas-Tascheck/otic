@@ -63,7 +63,8 @@ fn main() {
     //Fitness = (Pontuação Perfeita) - (Nº de Ataques Diagonais)
     //Order 1 Crossover (OX1).
     //Swap Mutation (Mutação por Troca).
-    run_nqueens(32, pop_size, gens, runs, 0.85, 0.02);
+    // With elitism and tournament selection, mutation is now per-individual
+    run_nqueens(128, pop_size, gens, runs, 0.9, 0.08, 10);
 }
 
 //TODO:

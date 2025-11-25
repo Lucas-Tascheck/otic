@@ -196,12 +196,21 @@ pub fn plot_convergence(best: &[f64], mean: &[f64], worst: &[f64], filename: &st
     let root = BitMapBackend::new(filename, (1000, 700)).into_drawing_area();
     root.fill(&WHITE).unwrap();
 
+    // Find the min and max values to adjust the y-axis scale
+    let min_val = worst.iter().cloned().fold(f64::INFINITY, f64::min).max(0.0);
+    let max_val = best.iter().cloned().fold(f64::NEG_INFINITY, f64::max).min(1.0);
+    
+    // Add some padding to the range for better visualization
+    let padding = (max_val - min_val) * 0.05;
+    let y_min = (min_val - padding).max(0.0);
+    let y_max = (max_val + padding).min(1.0);
+
     let mut chart = ChartBuilder::on(&root)
         .caption("Convergência do AG", ("sans-serif", 35))
         .margin(5)
         .x_label_area_size(60)
         .y_label_area_size(60)
-        .build_cartesian_2d(0..gens, 0.0..1.0)
+        .build_cartesian_2d(0..gens, y_min..y_max)
         .unwrap();
 
     chart
@@ -211,6 +220,7 @@ pub fn plot_convergence(best: &[f64], mean: &[f64], worst: &[f64], filename: &st
         .label_style(("sans-serif", 18))
         .axis_desc_style(("sans-serif", 22))
         .light_line_style(&WHITE.mix(0.8))
+        .y_label_formatter(&|y| format!("{:.3}", y))
         .draw()
         .unwrap();
 
